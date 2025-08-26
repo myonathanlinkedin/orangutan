@@ -199,40 +199,29 @@ python -m pytest tests/
 python -m pytest tests/ --cov=orangutan
 ```
 
-## 📚 Documentation
-
-- [API Reference](docs/api.md)
-- [Performance Tuning](docs/performance.md)
-- [Architecture Deep Dive](docs/architecture.md)
-- [Research Paper](docs/paper.pdf)
-
 ## 📄 License
 
-Copyright 2025 ORANGUTAN Research Team
+Licensed under the Apache License, Version 2.0 (the "License");  
+you may not use this file except in compliance with the License.  
+You may obtain a copy of the License at:
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
-
-```
 http://www.apache.org/licenses/LICENSE-2.0
-```
+
+---
+
+### Attribution Notice
+If you use this project in your work, please provide proper credit to the author: **Mateus Yonathan**.
+
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 ## 🙏 Acknowledgments
 
-- **Original Research**: Based on `orangutan.txt` specification and research framework
 - **NVIDIA**: CUDA framework and GPU architecture
 - **PyTorch Team**: Deep learning framework
 - **Research Community**: Multi-agent systems and GPU optimization
 
 **If you use this project in your research or work, please acknowledge the original ORANGUTAN research framework and cite this implementation.**
-
-## 📞 Contact
-
-- **Project**: [GitHub Issues](https://github.com/your-username/orangutan/issues)
-- **Research**: [Paper Discussion](https://github.com/your-username/orangutan/discussions)
-- **Email**: your-email@example.com
-
 ---
 
 **🦧 ORANGUTAN**: Where GPU optimization meets primate intelligence! 🚀
