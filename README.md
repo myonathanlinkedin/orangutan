@@ -1,4 +1,4 @@
-# 🦧 ORANGUTAN: Agent-Based GPU Scheduling Framework
+# ORANGUTAN: Agent-Based GPU Scheduling Framework
 
 > **Maximizing Sustained Tensor-Core Utilization and Minimizing Effective Memory Traffic on Constrained GPUs**
 
@@ -7,22 +7,22 @@
 [![CUDA](https://img.shields.io/badge/CUDA-11.8+-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-## 🎯 Overview
+## Overview
 
 ORANGUTAN is an innovative agent-based metaheuristic framework for GPU resource contention resolution and tensor-workload orchestration. Inspired by primate social dynamics, it transforms GPU hardware into a "jungle ecosystem" where intelligent agents negotiate for computational resources.
 
 **This project is based on the research specification in `orangutan.txt` and implements the core concepts described therein.**
 
-## 🌟 Key Features
+## Key Features
 
-- **🦧 Agent-Based Scheduling**: Multi-agent negotiation for optimal resource allocation
-- **⚡ Real GPU Execution**: Direct CUDA operations with persistent kernels
-- **📊 Performance Monitoring**: Real-time telemetry and anti-fabrication validation
-- **🎨 3D Visualization**: Jungle-themed performance charts and analysis
-- **🔧 Configurable Intensity**: Adjustable workload parameters for different TFLOPs targets
-- **📱 Mobile GPU Optimized**: Designed for RTX 4090 Mobile and similar constrained GPUs
+- **Agent-Based Scheduling**: Multi-agent negotiation for optimal resource allocation
+- **Real GPU Execution**: Direct CUDA operations with persistent kernels
+- **Performance Monitoring**: Real-time telemetry and anti-fabrication validation
+- **3D Visualization**: Jungle-themed performance charts and analysis
+- **Configurable Intensity**: Adjustable workload parameters for different TFLOPs targets
+- **Mobile GPU Optimized**: Designed for RTX 4090 Mobile and similar constrained GPUs
 
-## 🏗️ Architecture
+## Architecture
 
 ### Core Components
 
@@ -46,7 +46,7 @@ ORANGUTAN is an innovative agent-based metaheuristic framework for GPU resource 
 9. **ADAPT**: Adjust resource allocation
 10. **REPEAT**: Iterative optimization
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -66,36 +66,35 @@ pip install -r requirements.txt
 ### Basic Usage
 
 ```bash
-# Run with default settings (20 TFLOPS target)
+# Run with default settings (10 TFLOPS target, low intensity for laptop safety)
 python run_comprehensive_benchmarks.py
 
-# Recommended configuration for RTX 4090 Mobile
+# Recommended configuration for RTX 4090 Laptop GPU
 python run_comprehensive_benchmarks.py --tflops-target 15 --workload-intensity medium
 
-# High-performance configuration
+# High-performance configuration (use with caution on laptops)
 python run_comprehensive_benchmarks.py --tflops-target 20 --workload-intensity high
 
-# Conservative mode for stable results
+# Conservative mode for stable results and laptop safety
 python run_comprehensive_benchmarks.py --tflops-target 10 --workload-intensity low
 
-# Custom tensor dimensions and iterations
-python run_comprehensive_benchmarks.py --tensor-size 4096 --num-iterations 200
+# Custom tensor dimensions and iterations (keep iterations low for laptop safety)
+python run_comprehensive_benchmarks.py --tensor-size 4096 --num-iterations 50
 ```
 
 ### Command Line Options
 
 | Parameter | Description | Default | Range |
 |-----------|-------------|---------|-------|
-| `--tflops-target` | Target TFLOPs performance | 20.0 | 5.0-32.98 |
-| `--workload-intensity` | Workload intensity level | high | low/medium/high/max |
+| `--tflops-target` | Target TFLOPs performance | 10.0 | 5.0-32.98 |
+| `--workload-intensity` | Workload intensity level | low | low/medium/high/max |
 | `--tensor-size` | Base tensor dimension | 2048 | 1024/2048/4096/8192 |
-| `--num-iterations` | Computation iterations | 100 | 10-500 |
+| `--num-iterations` | Computation iterations | 10 | 10-100 |
 | `--batch-size-multiplier` | Batch size multiplier | 2.0 | 0.5-5.0 |
-| `--quick-test` | Quick validation mode | False | Flag |
 
-## 📊 Performance Results
+## Performance Results
 
-### RTX 4090 Mobile Performance
+### RTX 4090 Laptop GPU Performance
 
 | Configuration | TFLOPs | GPU Utilization | Throughput | Latency P50 |
 |---------------|--------|-----------------|------------|-------------|
@@ -109,8 +108,9 @@ python run_comprehensive_benchmarks.py --tensor-size 4096 --num-iterations 200
 - **FP64**: 515.3 GFLOPS
 - **Memory**: 16GB GDDR6X
 - **SMs**: 76 Streaming Multiprocessors
+- **Default Safety**: 10 TFLOPS target, low intensity for laptop protection
 
-## 🔬 Research Applications
+## Research Applications
 
 ORANGUTAN is designed for academic research in:
 
@@ -120,7 +120,7 @@ ORANGUTAN is designed for academic research in:
 - **Memory Efficiency**: Minimizing effective memory traffic
 - **Real-Time Scheduling**: Adaptive workload orchestration
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 orangutan/
@@ -138,11 +138,15 @@ orangutan/
 └── run_comprehensive_benchmarks.py  # Main benchmark runner
 ```
 
-## 🧪 Running Benchmarks
+## Running Benchmarks
 
 ### Comprehensive Benchmark
 
 ```bash
+# Default safe configuration (10 TFLOPS, low intensity)
+python run_comprehensive_benchmarks.py
+
+# High-performance configuration (use with caution)
 python run_comprehensive_benchmarks.py --tflops-target 20 --workload-intensity high
 ```
 
@@ -160,7 +164,7 @@ This will:
 - `results/benchmark_summary.json`: Performance summary
 - `results/charts/`: 3D performance visualization charts
 
-## 🔍 Monitoring & Validation
+## Monitoring & Validation
 
 ### Anti-Fabrication System
 
@@ -178,7 +182,7 @@ ORANGUTAN includes built-in validation to ensure all performance metrics are rea
 - SM occupancy rates
 - Tensor core utilization
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
@@ -199,7 +203,7 @@ python -m pytest tests/
 python -m pytest tests/ --cov=orangutan
 ```
 
-## 📄 License
+## License
 
 Licensed under the Apache License, Version 2.0 (the "License");  
 you may not use this file except in compliance with the License.  
@@ -212,16 +216,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 ### Attribution Notice
 If you use this project in your work, please provide proper credit to the author: **Mateus Yonathan**.
 
-
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **NVIDIA**: CUDA framework and GPU architecture
 - **PyTorch Team**: Deep learning framework
 - **Research Community**: Multi-agent systems and GPU optimization
 
 **If you use this project in your research or work, please acknowledge the original ORANGUTAN research framework and cite this implementation.**
+
 ---
 
-**🦧 ORANGUTAN**: Where GPU optimization meets primate intelligence! 🚀
+**ORANGUTAN**: Where GPU optimization meets primate intelligence!

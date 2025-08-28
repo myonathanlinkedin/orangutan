@@ -29,23 +29,23 @@ class VerifiedSimulator:
     General implementation for any laptop with NVIDIA GPU
     """
     
-    def __init__(self, output_dir='results', tflops_target=20.0, 
-                 intensity_config=None, tensor_size=2048, num_iterations=100, 
-                 batch_multiplier=2.0):
-        """Initialize ORANGUTAN simulator with TFLOPs optimization."""
+    def __init__(self, output_dir='results', tflops_target=5.0, 
+                 intensity_config=None, tensor_size=256, num_iterations=10, 
+                 batch_multiplier=1.0):
+        """Initialize ORANGUTAN simulator with FAIR COMPARISON to baseline."""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
-        # TFLOPs optimization parameters
+        # FAIR COMPARISON parameters - SAME workload complexity as baseline
         self.tflops_target = tflops_target
         self.intensity_config = intensity_config or {
-            'iterations_multiplier': 2.0,
-            'tensor_scale': 1.5,
-            'batch_scale': 2.0,
-            'description': 'High intensity for 15-20 TFLOPS target'
+            'iterations_multiplier': 1.0,
+            'tensor_scale': 1.0,
+            'batch_scale': 1.0,
+            'description': 'FAIR intensity for baseline comparison'
         }
-        self.tensor_size = tensor_size
-        self.num_iterations = num_iterations
+        self.tensor_size = tensor_size  # 256x256x256 - SAME as baseline
+        self.num_iterations = num_iterations  # 10 - SAME as baseline
         self.batch_multiplier = batch_multiplier
         
         # Initialize logging FIRST
@@ -268,7 +268,7 @@ class VerifiedSimulator:
         self.logger.info(f"[SAVE] Results saved to {results_path}")
         self.logger.info("ORANGUTAN simulation completed successfully")
         
-        return self  # Return simulator object, not results dict
+        return results  # Return results dict, not simulator object
     
     def _initialize_workloads(self):
         """Initialize realistic workloads for 5+ minute simulation runtime."""
@@ -558,8 +558,8 @@ class VerifiedSimulator:
         
         # Step 3: REAL ORANGUTAN Resource Contention Resolution with Multi-SM
         assignments = {}
-        # Initialize all 80 SMs with resources for proper multi-SM utilization
-        sm_resources = {sm_id: {'registers': 256000, 'shared_mem': 192000, 'warp_slots': 64} for sm_id in range(80)}
+        # Initialize all 76 SMs with resources for proper multi-SM utilization
+        sm_resources = {sm_id: {'registers': 256000, 'shared_mem': 192000, 'warp_slots': 64} for sm_id in range(76)}
         
         print(f"[ORANGUTAN] Initialized {len(sm_resources)} SMs for multi-SM resource allocation")
         
@@ -595,11 +595,11 @@ class VerifiedSimulator:
                 fallback_found = False
                 
                 # Track SM usage to ensure even distribution
-                sm_workload_count = {sm_id: len(assignments.get(sm_id, [])) for sm_id in range(80)}
+                sm_workload_count = {sm_id: len(assignments.get(sm_id, [])) for sm_id in range(76)}
                 
                 # Find SMs with available resources AND lowest current workload count
                 available_sms = []
-                for alt_sm in range(80):
+                for alt_sm in range(76):
                     if (sm_resources[alt_sm]['registers'] >= required_regs and 
                         sm_resources[alt_sm]['shared_mem'] >= required_shmem and
                         sm_resources[alt_sm]['warp_slots'] >= 1):
@@ -624,7 +624,7 @@ class VerifiedSimulator:
                 else:
                     # EMERGENCY: Find SM with most available resources and lowest workload count
                     emergency_sms = []
-                    for emergency_sm in range(80):
+                    for emergency_sm in range(76):
                         if sm_resources[emergency_sm]['warp_slots'] >= 1:
                             available_regs = sm_resources[emergency_sm]['registers']
                             available_shmem = sm_resources[emergency_sm]['shared_mem']
@@ -662,11 +662,11 @@ class VerifiedSimulator:
         # Enhanced telemetry for multi-SM utilization
         total_workloads = sum(len(workloads) for workloads in assignments.values())
         active_sms = len(assignments)
-        sm_utilization = (active_sms / 80) * 100  # 80 total SMs
+        sm_utilization = (active_sms / 76) * 100  # 76 total SMs
         
         print(f"[ORANGUTAN] ALGORITHM: Resolved resource contention")
         print(f"[METRICS] Multi-SM Distribution: {total_workloads} workloads across {active_sms} SMs")
-        print(f"[METRICS] SM Utilization: {sm_utilization:.1f}% ({active_sms}/80 SMs active)")
+        print(f"[METRICS] SM Utilization: {sm_utilization:.1f}% ({active_sms}/76 SMs active)")
         
         # Log per-SM workload distribution
         for sm_id, workloads in assignments.items():

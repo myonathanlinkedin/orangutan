@@ -251,8 +251,8 @@ class ExecutionEngine:
             weight_tensor = torch.randn(safe_k, safe_n, device='cuda', dtype=torch.float16)
             output_tensor = torch.empty(safe_m, safe_n, device='cuda', dtype=torch.float16)
             
-            # QUICK TEST: Execute minimal operations for 5-10 second test
-            num_iterations = max(10, scale_factor * 5)  # QUICK TEST for 5-10 seconds
+            # SAFETY: Execute minimal operations for laptop safety (max 10 iterations)
+            num_iterations = 10  # SAFETY: Fixed at 10 iterations to prevent laptop overheating
             
             print(f"OPTIMIZED: Executing {num_iterations} operations for REAL TFLOPs target...")
             

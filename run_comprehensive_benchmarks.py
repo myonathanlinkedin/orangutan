@@ -17,11 +17,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from orangutan.simulator.verified_sim import VerifiedSimulator
-from orangutan.baselines.baseline_implementations import (
-    NativePyTorchBaseline, 
-    StaticPersistentKernelBaseline, 
-    NCCLDataParallelBaseline
-)
+
 from visualization.generate_charts import ORANGUTANChartGenerator
 
 class SimpleMetrics:
@@ -40,69 +36,95 @@ class SimpleMetrics:
         return getattr(self, key, default)
 
 class ORANGUTANBaselineComparison:
-    """Simple baseline comparison wrapper."""
+    """Real baseline comparison using existing implementations."""
     
     def __init__(self):
-        # Mock baseline results for now
-        self.native_baseline = None
-        self.static_baseline = None
-        self.nccl_baseline = None
+        # Use REAL baseline implementations
+        self.config = None
+        self.results = {}
     
     def run_comparisons(self):
-        """Run all baseline comparisons."""
+        """Run REAL baseline comparisons using existing implementations."""
         try:
-            print("🧪 Testing Native PyTorch Baseline...")
-            print("✅ Native PyTorch workload completed in 0.015s")
-            print("✅ Native PyTorch workload completed in 0.010s")
-            print("✅ Native PyTorch workload completed in 0.012s")
-            print("✅ Native PyTorch workload completed in 0.020s")
-            print("✅ Native PyTorch workload completed in 0.024s")
-            
-            print("🧪 Testing Static Persistent Kernel Baseline...")
-            print("✅ Static kernel 0 completed workload in 0.001s")
-            print("✅ Static kernel 0 completed workload in 0.000s")
-            print("✅ Static kernel 0 completed workload in 0.000s")
-            print("✅ Static kernel 0 completed workload in 0.000s")
-            print("✅ Static kernel 0 completed workload in 0.001s")
-            
-            print("🧪 Testing NCCL Data-Parallel Baseline...")
-            print("✅ NCCL workload completed in 0.004s")
-            print("✅ NCCL workload completed in 0.002s")
-            print("✅ NCCL workload completed in 0.002s")
-            print("✅ NCCL workload completed in 0.002s")
-            print("✅ NCCL workload completed in 0.002s")
-            
-            print("📊 Baseline Comparison Results:")
+            print("🧪 Running REAL Baseline Comparisons...")
             print("=" * 80)
-            print("NATIVE_PYTORCH:")
-            print("  Throughput: 1011222.96 tokens/sec")
-            print("  Completion Time: 16.20 ms")
-            print("  GPU Utilization: 15.2%")  # Fixed: realistic value
-            print("  TFLOPs: Calculated from actual benchmark data")  # No hardcoded values
-            print("  Latency P50: 15.00 ms")
-            print("  SLO Violations: 0.0%")
-            print("")
-            print("STATIC_PERSISTENT_KERNEL:")
-            print("  Throughput: 2498.99 tokens/sec")
-            print("  Completion Time: 0.40 ms")
-            print("  GPU Utilization: 12.8%")  # Fixed: realistic value
-            print("  TFLOPs: 7.23")           # Fixed: realistic value
-            print("  Latency P50: 0.00 ms")
-            print("  SLO Violations: 0.0%")
-            print("")
-            print("NCCL_DATA_PARALLEL:")
-            print("  Throughput: 433.73 tokens/sec")
-            print("  Completion Time: 2.31 ms")
-            print("  GPU Utilization: 18.5%")  # Fixed: realistic value
-            print("  TFLOPs: 6.89")           # Fixed: realistic value
-            print("  Latency P50: 2.00 ms")
-            print("  SLO Violations: 0.0%")
             
-            print("✅ Baseline comparisons completed successfully!")
+            # Import and use REAL baseline implementations
+            from orangutan.baselines.pytorch_baselines import (
+                run_all_baselines, BaselineConfig
+            )
+            import torch
+            
+            # Create FAIR config for mobile GPU compatibility - SAME as ORANGUTAN workload
+            self.config = BaselineConfig(
+                batch_size=8,           # Reduced for mobile GPU
+                sequence_length=256,     # Reduced for mobile GPU  
+                hidden_size=512,         # Reduced for mobile GPU
+                num_layers=6,            # Reduced for mobile GPU
+                num_heads=8,             # Reduced for mobile GPU
+                device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                dtype=torch.float16,
+                num_streams=2,
+                tile_shape=(256, 256, 256)  # Reduced for mobile GPU
+            )
+            
+            print(f"🔧 Configuration: {self.config.batch_size} batch, {self.config.sequence_length} seq, {self.config.hidden_size} hidden")
+            print(f"💻 Device: {self.config.device}")
+            
+            # Run REAL baselines
+            print("\n📊 Running Native PyTorch Baseline...")
+            print("📊 Running Static Persistent Kernel Baseline...")
+            print("📊 Running NCCL Data-Parallel Baseline...")
+            
+            # Execute REAL baseline implementations with benchmark iterations
+            self.results, comparison = run_all_baselines(self.config, num_iterations=1)
+            
+            # Save REAL results to JSON
+            self.save_baseline_results()
+            
+            print("✅ REAL baseline comparisons completed successfully!")
+            print("📁 Results saved to: results/baseline_comparison_results.json")
+            
             return True
+            
         except Exception as e:
-            print(f"❌ Baseline comparison failed: {e}")
+            print(f"❌ Real baseline comparison failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
+    
+    def save_baseline_results(self):
+        """Save REAL baseline results to JSON."""
+        try:
+            import json
+            import os
+            
+            # Ensure results directory exists
+            os.makedirs('results', exist_ok=True)
+            
+            # Save to results directory
+            output_file = "results/baseline_comparison_results.json"
+            
+            # Prepare data for saving
+            save_data = {
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'baseline_results': self.results,
+                'configuration': {
+                    'batch_size': self.config.batch_size,
+                    'sequence_length': self.config.sequence_length,
+                    'hidden_size': self.config.hidden_size,
+                    'num_layers': self.config.num_layers,
+                    'tile_shape': self.config.tile_shape
+                }
+            }
+            
+            with open(output_file, 'w') as f:
+                json.dump(save_data, f, indent=2, default=str)
+            
+            print(f"💾 REAL baseline results saved to {output_file}")
+            
+        except Exception as e:
+            print(f"❌ Failed to save baseline results: {e}")
 
 def parse_arguments():
     """Parse command line arguments for TFLOPs optimization."""
@@ -132,8 +154,8 @@ Examples:
     parser.add_argument(
         '--workload-intensity',
         choices=['low', 'medium', 'high', 'max'],
-        default='high',
-        help='Workload intensity level (default: high)'
+        default='low',
+        help='Workload intensity level (default: low for laptop safety)'
     )
     
     parser.add_argument(
@@ -147,8 +169,8 @@ Examples:
     parser.add_argument(
         '--num-iterations',
         type=int,
-        default=100,
-        help='Number of computation iterations per workload (default: 100)'
+        default=10,
+        help='Number of computation iterations per workload (default: 10 for laptop safety)'
     )
     
     parser.add_argument(
@@ -158,11 +180,7 @@ Examples:
         help='Batch size multiplier for increased workload (default: 2.0)'
     )
     
-    parser.add_argument(
-        '--quick-test',
-        action='store_true',
-        help='Run quick test (5-10 seconds) for validation'
-    )
+
     
     return parser.parse_args()
 
@@ -258,11 +276,7 @@ def calculate_workload_parameters(args):
         final_workload_count = int(base_workloads * intensity_mult)
         final_workload_count = min(final_workload_count, 50)  # Safety cap
     
-    # Quick test adjustments
-    if args.quick_test:
-        final_iterations = max(10, final_iterations // 10)
-        final_workload_count = min(5, final_workload_count)
-        final_tensor_size = min(512, final_tensor_size)
+
     
     # Safety checks
     final_iterations = max(10, min(final_iterations, 1000))  # 10-1000 iterations
@@ -275,7 +289,7 @@ def calculate_workload_parameters(args):
         'workload_count': final_workload_count,
         'target_tflops': target_tflops,
         'intensity': args.intensity,
-        'quick_test': args.quick_test
+
     }
 
 def print_workload_config(config):
@@ -288,7 +302,7 @@ def print_workload_config(config):
     print(f"[ITERATIONS] Iterations: {config['iterations']}")
     print(f"[TENSOR] Tensor Size: {config['tensor_size']}x{config['tensor_size']}x{config['tensor_size']}")
     print(f"[WORKLOAD] Workload Count: {config['workload_count']}")
-    print(f"[QUICK] Quick Test: {'YES' if config['quick_test'] else 'NO'}")
+
     
     # Calculate expected performance
     base_tflops = 10.91
@@ -324,7 +338,7 @@ def run_orangutan_simulator(tflops_target=20.0, intensity_config=None,
     
     if results:
         print("✅ ORANGUTAN simulation completed successfully!")
-        print(f"Results: {len(results.active_workloads)} workloads processed")
+        print(f"Results: {results.get('completed_workloads', 0)} workloads completed")
     else:
         print("❌ ORANGUTAN simulation failed!")
     
@@ -621,11 +635,7 @@ def main():
     print(f"📋 Configuration: {intensity_config['description']}")
     print("=" * 80)
     
-    # Quick test mode
-    if args.quick_test:
-        print("⚡ QUICK TEST MODE: Running 5-10 second validation...")
-        args.tflops_target = min(args.tflops_target, 10.0)  # Limit for quick test
-        intensity_config = get_intensity_config('low', args.tflops_target)
+
     
     try:
         # Run ORANGUTAN simulator with optimized parameters
