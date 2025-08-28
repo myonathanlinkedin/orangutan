@@ -87,7 +87,8 @@ class VerifiedSimulator:
         self.config = {
             'workloads': [],
             'max_runtime_minutes': 5.0,
-            'target_tflops': self.tflops_target
+            'target_tflops': self.tflops_target,
+            'scenario': 'orangutan_simulation'  # Fixed: Set consistent scenario
         }
         
         self.logger.info(f"[INIT] ORANGUTAN Simulator initialized for {self.tflops_target} TFLOPS target")
@@ -688,7 +689,7 @@ class VerifiedSimulator:
     def _collect_final_results(self, simulation_duration: float) -> Dict:
         """Collect final simulation results."""
         # Calculate performance metrics
-        total_workloads = len(self.config.get('workloads', []))
+        total_workloads = len(self.active_workloads) + len(self.completed_workloads)
         completion_rate = len(self.completed_workloads) / total_workloads if total_workloads > 0 else 0
         
         # Calculate throughput
@@ -709,9 +710,9 @@ class VerifiedSimulator:
             actual_flops = self.execution_engine.actual_flops_log
         
         results = {
-            'scenario': self.config.get('scenario', 'unknown'),
+            'scenario': 'orangutan_simulation',  # Fixed: Use consistent scenario name
             'seeds': self.config.get('seed', [42]),
-            'total_workloads': total_workloads,
+            'total_workloads': len(self.active_workloads) + len(self.completed_workloads),  # Fixed: Calculate correctly
             'completed_workloads': len(self.completed_workloads),
             'failed_workloads': len(self.failed_workloads),
             'completion_rate': completion_rate,
