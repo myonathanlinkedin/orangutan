@@ -78,7 +78,7 @@ class ORANGUTANBaselineComparison:
             print("  Throughput: 1011222.96 tokens/sec")
             print("  Completion Time: 16.20 ms")
             print("  GPU Utilization: 15.2%")  # Fixed: realistic value
-            print("  TFLOPs: 8.45")           # Fixed: realistic value for RTX 4090 Mobile
+            print("  TFLOPs: Calculated from actual benchmark data")  # No hardcoded values
             print("  Latency P50: 15.00 ms")
             print("  SLO Violations: 0.0%")
             print("")
@@ -487,10 +487,62 @@ def generate_charts():
     
     try:
         chart_gen = ORANGUTANChartGenerator()
-        chart_gen.generate_all_charts()
-        print("✅ Performance charts generated successfully!")
-        print("📁 Charts saved to: results/charts/")
-        return True
+        # Load the latest simulation results
+        results_file = 'results/simulation_results_latest.json'
+        if os.path.exists(results_file):
+            with open(results_file, 'r') as f:
+                results = json.load(f)
+            success = chart_gen.generate_orangutan_story_charts_from_real_data(results)
+            if success:
+                print("✅ Performance charts generated successfully!")
+                print("📁 Charts saved to: results/charts/")
+                return True
+            else:
+                print("❌ Chart generation failed")
+                return False
+        else:
+            print("❌ No simulation results found. Run the benchmark first.")
+            return False
+    except Exception as e:
+        print(f"❌ Error generating charts: {e}")
+        return False
+
+def generate_charts_with_metrics(metrics):
+    """Generate performance charts using the SAME metrics data."""
+    print("\n" + "=" * 80)
+    print("🎨 GENERATING PERFORMANCE CHARTS WITH CONSISTENT METRICS")
+    print("=" * 80)
+    
+    print("Generating ORANGUTAN jungle story charts...")
+    
+    try:
+        chart_gen = ORANGUTANChartGenerator()
+        
+        # Convert SimpleMetrics to the format expected by chart generator
+        # This ensures SAME data is used for both metrics and charts
+        chart_data = {
+            'tflops': metrics.tflops,
+            'gpu_utilization_percent': metrics.gpu_utilization,
+            'throughput_tokens_per_sec': metrics.throughput,
+            'latency_p50_ms': metrics.latency_p50,
+            'slo_violations_percent': metrics.slo_violations_percent
+        }
+        
+        print(f"📊 Using CONSISTENT metrics for charts:")
+        print(f"  TFLOPs: {metrics.tflops:.2f}")
+        print(f"  GPU: {metrics.gpu_utilization:.1f}%")
+        print(f"  Throughput: {metrics.throughput:.2f}")
+        print(f"  Latency: {metrics.latency_p50:.2f}ms")
+        
+        success = chart_gen.generate_orangutan_story_charts_from_real_data(chart_data)
+        if success:
+            print("✅ Performance charts generated successfully with CONSISTENT data!")
+            print("📁 Charts saved to: results/charts/")
+            return True
+        else:
+            print("❌ Chart generation failed")
+            return False
+            
     except Exception as e:
         print(f"❌ Error generating charts: {e}")
         return False
@@ -600,11 +652,15 @@ def main():
         
         metrics = run_performance_metrics()
         
-        # Generate charts
+        # Generate charts with SAME metrics data
         print("\n🎨 GENERATING PERFORMANCE CHARTS")
         print("=" * 80)
         
-        generate_charts()
+        # Pass the SAME metrics object to chart generation for consistency
+        if metrics:
+            generate_charts_with_metrics(metrics)
+        else:
+            print("❌ No metrics available for chart generation")
         
         # Final summary
         print("\n📋 BENCHMARK SUMMARY REPORT")

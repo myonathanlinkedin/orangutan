@@ -54,9 +54,12 @@ class VerifiedSimulator:
         # Calculate optimized workload parameters AFTER logger is ready
         self._calculate_workload_params()
         
-        # Initialize GPU environment
+        # Initialize GPU environment with multi-GPU support
         self.device = Device()
         self.jungle = Jungle(self.device)
+        
+        # Enable multi-GPU support if available
+        self._initialize_multi_gpu()
         
         # Initialize execution engine with optimized parameters
         self.execution_engine = ExecutionEngine(
@@ -96,6 +99,36 @@ class VerifiedSimulator:
         self.logger.info(f"[TENSOR] Tensor Size: {self.tensor_size}x{self.tensor_size}x{self.tensor_size}")
         self.logger.info(f"[ITERATIONS] Iterations: {self.num_iterations}")
         self.logger.info(f"[BATCH] Batch Multiplier: {self.batch_multiplier}x")
+    
+    def _initialize_multi_gpu(self):
+        """Initialize multi-GPU support if available."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                num_gpus = torch.cuda.device_count()
+                if num_gpus > 1:
+                    self.multi_gpu_enabled = True
+                    self.gpu_devices = list(range(num_gpus))
+                    self.logger.info(f"[MULTI_GPU] Multi-GPU enabled: {num_gpus} GPUs detected")
+                    self.logger.info(f"[MULTI_GPU] GPU devices: {self.gpu_devices}")
+                    
+                    # Log GPU information for each device
+                    for gpu_id in self.gpu_devices:
+                        gpu_name = torch.cuda.get_device_name(gpu_id)
+                        gpu_memory = torch.cuda.get_device_properties(gpu_id).total_memory / (1024**3)
+                        self.logger.info(f"[MULTI_GPU] GPU {gpu_id}: {gpu_name} ({gpu_memory:.1f} GB)")
+                else:
+                    self.multi_gpu_enabled = False
+                    self.gpu_devices = [0]
+                    self.logger.info("[SINGLE_GPU] Single GPU mode: 1 GPU detected")
+            else:
+                self.multi_gpu_enabled = False
+                self.gpu_devices = [0]
+                self.logger.warning("[WARNING] CUDA not available, using CPU mode")
+        except Exception as e:
+            self.logger.error(f"Error initializing multi-GPU: {e}")
+            self.multi_gpu_enabled = False
+            self.gpu_devices = [0]
 
     def _calculate_workload_params(self):
         """Calculate optimized workload parameters based on TFLOPs target."""
@@ -423,10 +456,28 @@ class VerifiedSimulator:
         return True
     
     def _select_optimal_sm(self, workload: Workload, tile: tuple) -> int:
-        """Select optimal SM for workload based on current occupancy."""
-        # Simple selection: choose SM with lowest current occupancy
+        """Select optimal SM for workload based on load balancing."""
+        # Load-balanced selection: distribute workloads across multiple SMs
         sm_occupancies = self.jungle.get_sm_occupancies()
-        return min(sm_occupancies.keys(), key=lambda sm: sm_occupancies[sm])
+        
+        # Find SMs with reasonable occupancy (< 80%)
+        available_sms = [sm for sm, occ in sm_occupancies.items() if occ < 0.8]
+        
+        if available_sms:
+            # Use round-robin distribution for better load balancing
+            if not hasattr(self, '_last_sm_index'):
+                self._last_sm_index = -1
+            
+            self._last_sm_index = (self._last_sm_index + 1) % len(available_sms)
+            selected_sm = available_sms[self._last_sm_index]
+            
+            print(f"[LOAD_BALANCED] SM selection: Workload {workload.workload_id} -> SM {selected_sm} (occupancy: {sm_occupancies[selected_sm]:.2f})")
+            return selected_sm
+        else:
+            # Fallback: choose SM with lowest occupancy if all are heavily loaded
+            fallback_sm = min(sm_occupancies.keys(), key=lambda sm: sm_occupancies[sm])
+            print(f"[FALLBACK] SM selection: Workload {workload.workload_id} -> SM {fallback_sm} (all SMs heavily loaded)")
+            return fallback_sm
     
     def _predict_execution_time(self, workload: Workload, tile: tuple) -> float:
         """Predict execution time using roofline model."""
@@ -467,7 +518,7 @@ class VerifiedSimulator:
     
     def _negotiate_assignments(self, reservations: List[Dict]) -> Dict[int, List[Dict]]:
         """REAL ORANGUTAN Algorithm: Negotiate assignments with resource contention resolution."""
-        print("🦧 ORANGUTAN ALGORITHM: Starting REAL resource contention resolution...")
+        print("[ORANGUTAN] ALGORITHM: Starting REAL resource contention resolution...")
         
         # Step 1: Calculate REAL priority scores using ORANGUTAN formula
         for reservation in reservations:
@@ -505,9 +556,12 @@ class VerifiedSimulator:
         # Step 2: Sort by REAL priority score
         reservations.sort(key=lambda x: x['priority_score'], reverse=True)
         
-        # Step 3: REAL ORANGUTAN Resource Contention Resolution
+        # Step 3: REAL ORANGUTAN Resource Contention Resolution with Multi-SM
         assignments = {}
+        # Initialize all 80 SMs with resources for proper multi-SM utilization
         sm_resources = {sm_id: {'registers': 256000, 'shared_mem': 192000, 'warp_slots': 64} for sm_id in range(80)}
+        
+        print(f"[ORANGUTAN] Initialized {len(sm_resources)} SMs for multi-SM resource allocation")
         
         for reservation in reservations:
             workload = next(w for w in self.active_workloads if w.workload_id == reservation['workload_id'])
@@ -532,49 +586,92 @@ class VerifiedSimulator:
                 sm_resources[sm_id]['shared_mem'] -= required_shmem
                 sm_resources[sm_id]['warp_slots'] -= 1
                 
-                print(f"✅ ORANGUTAN: Workload {workload.workload_id} assigned to SM {sm_id} (Priority: {reservation['priority_score']:.3f})")
+                print(f"[SUCCESS] ORANGUTAN: Workload {workload.workload_id} assigned to SM {sm_id} (Priority: {reservation['priority_score']:.3f})")
             else:
                 # Resource contention detected - try fallback tile or different SM
-                print(f"⚠️ ORANGUTAN: Resource contention on SM {sm_id}, workload {workload.workload_id} needs fallback")
+                print(f"[WARNING] ORANGUTAN: Resource contention on SM {sm_id}, workload {workload.workload_id} needs fallback")
                 
                 # SMART FALLBACK: Try to find alternative SM with available resources
                 fallback_found = False
+                
+                # Track SM usage to ensure even distribution
+                sm_workload_count = {sm_id: len(assignments.get(sm_id, [])) for sm_id in range(80)}
+                
+                # Find SMs with available resources AND lowest current workload count
+                available_sms = []
                 for alt_sm in range(80):
                     if (sm_resources[alt_sm]['registers'] >= required_regs and 
                         sm_resources[alt_sm]['shared_mem'] >= required_shmem and
                         sm_resources[alt_sm]['warp_slots'] >= 1):
-                        
-                        if alt_sm not in assignments:
-                            assignments[alt_sm] = []
-                        assignments[alt_sm].append(reservation)
-                        
-                        # Update alternative SM resources
-                        sm_resources[alt_sm]['registers'] -= required_regs
-                        sm_resources[alt_sm]['shared_mem'] -= required_shmem
-                        sm_resources[alt_sm]['warp_slots'] -= 1
-                        
-                        print(f"🔄 ORANGUTAN: Workload {workload.workload_id} migrated to SM {alt_sm}")
-                        fallback_found = True
-                        break
+                        available_sms.append((alt_sm, sm_workload_count[alt_sm]))
                 
-                # CRITICAL: If no fallback found, use EMERGENCY ASSIGNMENT to prevent infinite loop
-                if not fallback_found:
-                    # Find ANY SM with minimal resources and force assignment
+                if available_sms:
+                    # Sort by workload count (lowest first) for load balancing
+                    available_sms.sort(key=lambda x: x[1])
+                    best_sm = available_sms[0][0]
+                    
+                    if best_sm not in assignments:
+                        assignments[best_sm] = []
+                    assignments[best_sm].append(reservation)
+                    
+                    # Update alternative SM resources
+                    sm_resources[best_sm]['registers'] -= required_regs
+                    sm_resources[best_sm]['shared_mem'] -= required_shmem
+                    sm_resources[best_sm]['warp_slots'] -= 1
+                    
+                    print(f"[MIGRATION] ORANGUTAN: Workload {workload.workload_id} migrated to SM {best_sm} (load balanced)")
+                    fallback_found = True
+                else:
+                    # EMERGENCY: Find SM with most available resources and lowest workload count
+                    emergency_sms = []
                     for emergency_sm in range(80):
                         if sm_resources[emergency_sm]['warp_slots'] >= 1:
-                            if emergency_sm not in assignments:
-                                assignments[emergency_sm] = []
-                            assignments[emergency_sm].append(reservation)
+                            available_regs = sm_resources[emergency_sm]['registers']
+                            available_shmem = sm_resources[emergency_sm]['shared_mem']
+                            available_warp_slots = sm_resources[emergency_sm]['warp_slots']
+                            current_workloads = sm_workload_count[emergency_sm]
                             
-                            # Force resource allocation (may cause issues but prevents infinite loop)
-                            sm_resources[emergency_sm]['registers'] = max(0, sm_resources[emergency_sm]['registers'] - required_regs)
-                            sm_resources[emergency_sm]['shared_mem'] = max(0, sm_resources[emergency_sm]['shared_mem'] - required_shmem)
-                            sm_resources[emergency_sm]['warp_slots'] -= 1
-                            
-                            print(f"🚨 EMERGENCY: Workload {workload.workload_id} forced to SM {emergency_sm} to prevent infinite loop!")
-                            break
+                            # Calculate resource availability score (higher is better)
+                            resource_score = (available_regs / 256000) + (available_shmem / 192000) + (available_warp_slots / 64)
+                            # Penalize high workload count
+                            final_score = resource_score - (current_workloads * 0.1)
+                            emergency_sms.append((emergency_sm, final_score))
+                    
+                    if emergency_sms:
+                        # Sort by final score (highest first)
+                        emergency_sms.sort(key=lambda x: x[1], reverse=True)
+                        best_emergency_sm = emergency_sms[0][0]
+                        
+                        if best_emergency_sm not in assignments:
+                            assignments[best_emergency_sm] = []
+                        assignments[best_emergency_sm].append(reservation)
+                        
+                        # Force resource allocation (may cause issues but prevents infinite loop)
+                        sm_resources[best_emergency_sm]['registers'] = max(0, sm_resources[best_emergency_sm]['registers'] - required_regs)
+                        sm_resources[best_emergency_sm]['shared_mem'] = max(0, sm_resources[best_emergency_sm]['shared_mem'] - required_shmem)
+                        sm_resources[best_emergency_sm]['warp_slots'] -= 1
+                        
+                        print(f"[EMERGENCY] Workload {workload.workload_id} assigned to SM {best_emergency_sm} (resource availability + load balancing)")
+                    else:
+                        # Last resort: force to SM 0
+                        if 0 not in assignments:
+                            assignments[0] = []
+                        assignments[0].append(reservation)
+                        print(f"[LAST_RESORT] Workload {workload.workload_id} forced to SM 0 (no other options)")
         
-        print(f"🦧 ORANGUTAN ALGORITHM: Resolved resource contention, assigned {sum(len(workloads) for workloads in assignments.values())} workloads")
+        # Enhanced telemetry for multi-SM utilization
+        total_workloads = sum(len(workloads) for workloads in assignments.values())
+        active_sms = len(assignments)
+        sm_utilization = (active_sms / 80) * 100  # 80 total SMs
+        
+        print(f"[ORANGUTAN] ALGORITHM: Resolved resource contention")
+        print(f"[METRICS] Multi-SM Distribution: {total_workloads} workloads across {active_sms} SMs")
+        print(f"[METRICS] SM Utilization: {sm_utilization:.1f}% ({active_sms}/80 SMs active)")
+        
+        # Log per-SM workload distribution
+        for sm_id, workloads in assignments.items():
+            print(f"[METRICS] SM {sm_id}: {len(workloads)} workloads assigned")
+        
         return assignments
     
     def _launch_persistent_kernels(self, assignments: Dict[int, List[Dict]]):
